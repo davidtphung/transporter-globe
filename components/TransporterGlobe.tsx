@@ -75,9 +75,9 @@ function OrbitArc({
       new THREE.Line(
         geometry,
         new THREE.LineBasicMaterial({
-          color: selected ? "#ffcf6a" : "#58d2ff",
+          color: selected ? "#ffffff" : "#a7d1f0",
           transparent: true,
-          opacity: selected ? 0.95 : showOrbits ? 0.34 : 0.12
+          opacity: selected ? 0.95 : showOrbits ? 0.32 : 0.1
         })
       ),
     [geometry, selected, showOrbits]
@@ -89,7 +89,7 @@ function OrbitArc({
       {showGroundTracks ? <primitive object={line} onClick={onSelect} /> : null}
       <mesh position={marker} onClick={onSelect}>
         <sphereGeometry args={[selected ? 0.055 : 0.035, 18, 18]} />
-        <meshStandardMaterial color={selected ? "#ffcf6a" : "#9bf4ff"} emissive={selected ? "#ff8a00" : "#0077aa"} />
+        <meshStandardMaterial color={selected ? "#ffffff" : "#a7d1f0"} emissive={selected ? "#005288" : "#003d66"} />
       </mesh>
     </group>
   );
@@ -103,9 +103,9 @@ function VardaTrack() {
       new THREE.Line(
         geometry,
         new THREE.LineBasicMaterial({
-          color: "#ff6b7a",
+          color: "#f44336",
           transparent: true,
-          opacity: 0.95
+          opacity: 0.9
         })
       ),
     [geometry]
@@ -117,7 +117,7 @@ function VardaTrack() {
       {points.map((point, index) => (
         <mesh key={vardaTrajectory[index].label} position={point}>
           <sphereGeometry args={[index === points.length - 1 ? 0.06 : 0.04, 18, 18]} />
-          <meshStandardMaterial color={index === points.length - 1 ? "#ffffff" : "#ff8ca0"} emissive="#a61b3b" />
+          <meshStandardMaterial color={index === points.length - 1 ? "#ffffff" : "#f44336"} emissive="#8b1a1a" />
         </mesh>
       ))}
     </group>
@@ -162,7 +162,7 @@ function Scene({ payloads, selectedPayloadId, onSelect, showGroundTracks, showOr
       <Earth />
       <mesh>
         <sphereGeometry args={[2.012, 96, 96]} />
-        <meshBasicMaterial color="#50c7ff" wireframe transparent opacity={0.08} />
+        <meshBasicMaterial color="#005288" wireframe transparent opacity={0.06} />
       </mesh>
       {visiblePayloads.map((payload) => (
         <OrbitArc
@@ -182,9 +182,9 @@ function Scene({ payloads, selectedPayloadId, onSelect, showGroundTracks, showOr
 export function TransporterGlobe(props: Props) {
   return (
     <Canvas camera={{ position: [0, 0.8, 5.4], fov: 42 }} dpr={[1, 2]} aria-label="Interactive orbital globe">
-      <ambientLight intensity={0.62} />
-      <directionalLight position={[4, 3, 4]} intensity={1.35} />
-      <pointLight position={[-3, -2, 5]} color="#7be7ff" intensity={0.7} />
+      <ambientLight intensity={0.45} />
+      <directionalLight position={[4, 3, 4]} intensity={1.1} />
+      <pointLight position={[-3, -2, 5]} color="#a7d1f0" intensity={0.35} />
       <Scene {...props} />
     </Canvas>
   );

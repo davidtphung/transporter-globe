@@ -1,14 +1,20 @@
 :root {
-  --bg: #05070c;
-  --panel: rgba(13, 20, 28, 0.78);
-  --panel-strong: rgba(17, 28, 38, 0.92);
-  --line: rgba(172, 219, 255, 0.18);
-  --text: #f4f8fb;
-  --muted: #9fb1bf;
-  --cyan: #58d2ff;
-  --mint: #78ffbf;
-  --amber: #ffcf6a;
-  --rose: #ff6b7a;
+  --bg: #000000;
+  --bg-elevated: #0a0a0a;
+  --panel: rgba(0, 0, 0, 0.8);
+  --panel-strong: rgba(0, 0, 0, 0.92);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.15);
+  --text: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.62);
+  --muted: rgba(255, 255, 255, 0.45);
+  --spacex-blue: #005288;
+  --accent: #a7d1f0;
+  --accent-glow: rgba(0, 82, 136, 0.22);
+  --cyan: var(--accent);
+  --mint: #00c853;
+  --amber: #ff9800;
+  --rose: #f44336;
   --focus: #ffffff;
 }
 
@@ -27,9 +33,9 @@ body {
   min-height: 100vh;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
+  color: var(--text);
   background:
-    radial-gradient(circle at 25% 12%, rgba(88, 210, 255, 0.22), transparent 34rem),
-    linear-gradient(160deg, #05070c 0%, #0a1117 52%, #07130f 100%);
+    radial-gradient(120% 90% at 60% 20%, #0b2a47 0%, #05101d 42%, #000000 100%);
 }
 
 button,
@@ -81,7 +87,7 @@ button {
   padding: 12px 16px;
   border-radius: 8px;
   background: #ffffff;
-  color: #05070c;
+  color: #000000;
 }
 
 .topbar,
@@ -92,8 +98,8 @@ button {
 .globe-card {
   border: 1px solid var(--line);
   background: var(--panel);
-  backdrop-filter: blur(28px) saturate(1.35);
-  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 .topbar {
@@ -126,10 +132,10 @@ button {
   place-items: center;
   width: 48px;
   height: 48px;
-  border: 1px solid rgba(88, 210, 255, 0.32);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(88, 210, 255, 0.18), rgba(120, 255, 191, 0.12));
-  color: var(--cyan);
+  background: rgba(0, 82, 136, 0.18);
+  color: var(--accent);
 }
 
 .brand p,
@@ -162,7 +168,7 @@ button {
   gap: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
   padding: 0 12px;
 }
 
@@ -183,8 +189,15 @@ button {
 .chips button {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.time-controls button:hover,
+.chips button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--line-strong);
 }
 
 .time-controls button {
@@ -248,8 +261,8 @@ button {
 .mission-row.active,
 .mission-row:hover,
 .chips .selected {
-  border-color: rgba(88, 210, 255, 0.48);
-  background: rgba(88, 210, 255, 0.12);
+  border-color: rgba(0, 82, 136, 0.55);
+  background: rgba(0, 82, 136, 0.18);
 }
 
 .field {
@@ -264,7 +277,7 @@ button {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #101923;
+  background: var(--bg-elevated);
   color: var(--text);
   padding: 0 12px;
 }
@@ -298,9 +311,10 @@ button {
 .eyebrow {
   margin: 0 0 8px;
   text-transform: uppercase;
-  font-weight: 760;
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
 }
 
 .mission-summary h2 {
@@ -310,7 +324,7 @@ button {
 
 .mission-summary p:last-child {
   max-width: 62ch;
-  color: #c9d6df;
+  color: var(--text-secondary);
 }
 
 .stats {
@@ -322,7 +336,7 @@ button {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .stats span {
@@ -336,6 +350,7 @@ button {
   display: block;
   margin-top: 3px;
   font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .globe-card {
@@ -344,9 +359,7 @@ button {
   border-radius: 8px;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent),
-    radial-gradient(circle at center, rgba(88, 210, 255, 0.11), transparent 33rem),
-    rgba(3, 7, 11, 0.78);
+    radial-gradient(120% 90% at 60% 20%, #0b2a47 0%, #05101d 50%, #000000 100%);
 }
 
 .globe-loading {
@@ -373,8 +386,9 @@ button {
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.36);
-  color: #dfe9ef;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(20px);
+  color: var(--text-secondary);
   font-size: 0.84rem;
 }
 
@@ -385,11 +399,11 @@ button {
 }
 
 .cyan {
-  background: var(--cyan);
+  background: var(--accent);
 }
 
 .amber {
-  background: var(--amber);
+  background: #ffffff;
 }
 
 .rose {
@@ -458,7 +472,7 @@ button {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .metrics dt {
@@ -500,7 +514,7 @@ button {
 }
 
 .manifest a {
-  color: var(--cyan);
+  color: var(--accent);
 }
 
 .table-wrap {
@@ -530,9 +544,10 @@ td {
 }
 
 th {
-  color: #c9d8e1;
+  color: var(--text-secondary);
   font-size: 0.82rem;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 td button {
@@ -545,7 +560,7 @@ td button {
 }
 
 .selected-row {
-  background: rgba(88, 210, 255, 0.1);
+  background: rgba(0, 82, 136, 0.14);
 }
 
 @media (prefers-contrast: more) {
@@ -560,7 +575,7 @@ td button {
   .timeline,
   .manifest,
   .globe-card {
-    background: #020304;
+    background: #000000;
   }
 }
 
@@ -613,14 +628,24 @@ td button {
   padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.primary-nav a:hover,
+.export-links a:hover,
+.mission-link:hover,
+.time-controls a:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--line-strong);
 }
 
 .primary-nav a[aria-current="page"] {
-  border-color: rgba(88, 210, 255, 0.48);
-  background: rgba(88, 210, 255, 0.12);
+  border-color: rgba(0, 82, 136, 0.55);
+  background: rgba(0, 82, 136, 0.18);
+  color: var(--accent);
 }
 
 .mission-link {
@@ -673,16 +698,19 @@ td button {
 }
 
 .status-active {
-  background: rgba(120, 255, 191, 0.16);
+  background: rgba(0, 200, 83, 0.14);
+  color: var(--mint);
 }
 
 .status-decayed,
 .status-reentered {
-  background: rgba(255, 107, 122, 0.16);
+  background: rgba(244, 67, 54, 0.14);
+  color: var(--rose);
 }
 
 .status-catalog-pending {
-  background: rgba(255, 207, 106, 0.16);
+  background: rgba(255, 152, 0, 0.14);
+  color: var(--amber);
 }
 
 .inspector-desktop {
@@ -757,8 +785,8 @@ td button {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
-  backdrop-filter: blur(28px) saturate(1.35);
-  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 .mission-card,

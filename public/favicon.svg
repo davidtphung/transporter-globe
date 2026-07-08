@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Transporter Globe favicon">
-  <rect width="128" height="128" rx="24" fill="#05070c"/>
-  <circle cx="64" cy="64" r="34" fill="#101923" stroke="#58d2ff" stroke-width="4"/>
-  <path d="M24 75c25-24 55-29 90-15" fill="none" stroke="#78ffbf" stroke-width="5" stroke-linecap="round"/>
-  <path d="M19 50c30 20 59 26 90 9" fill="none" stroke="#58d2ff" stroke-width="4" stroke-linecap="round" opacity=".8"/>
-  <circle cx="91" cy="58" r="8" fill="#ffcf6a"/>
-  <path d="M45 95c16-8 35-10 56-3" fill="none" stroke="#ff6b7a" stroke-width="4" stroke-linecap="round"/>
+  <rect width="128" height="128" rx="24" fill="#000000"/>
+  <circle cx="64" cy="64" r="34" fill="#0a0a0a" stroke="#005288" stroke-width="4"/>
+  <path d="M24 75c25-24 55-29 90-15" fill="none" stroke="#a7d1f0" stroke-width="5" stroke-linecap="round"/>
+  <path d="M19 50c30 20 59 26 90 9" fill="none" stroke="#005288" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+  <circle cx="91" cy="58" r="8" fill="#ffffff"/>
+  <path d="M45 95c16-8 35-10 56-3" fill="none" stroke="#f44336" stroke-width="4" stroke-linecap="round"/>
 </svg>
