@@ -90,5 +90,20 @@ export function searchCatalog(
     deduped.set(result.id, result);
   }
 
-  return [...deduped.values()].slice(0, 50);
+  const typeRank: Record<SearchResult["type"], number> = {
+    payload: 0,
+    landing: 1,
+    mission: 2,
+    operator: 3
+  };
+
+  return [...deduped.values()]
+    .sort((a, b) => {
+      if (!normalized) return typeRank[a.type] - typeRank[b.type];
+      const aLabel = a.label.toLowerCase().includes(normalized) ? 0 : 1;
+      const bLabel = b.label.toLowerCase().includes(normalized) ? 0 : 1;
+      if (aLabel !== bLabel) return aLabel - bLabel;
+      return typeRank[a.type] - typeRank[b.type];
+    })
+    .slice(0, 50);
 }

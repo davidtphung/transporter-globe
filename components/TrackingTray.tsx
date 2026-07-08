@@ -1,14 +1,15 @@
 "use client";
 
-import type { Payload } from "@/types";
+import type { Mission, Payload } from "@/types";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { payloadDotTone } from "@/lib/payload-status";
 
 type Props = {
   payload: Payload;
+  mission?: Mission;
 };
 
-export function TrackingTray({ payload }: Props) {
+export function TrackingTray({ payload, mission }: Props) {
   const confidence = payload.sourceRefs[0]?.confidence ?? 0.5;
 
   return (
@@ -28,6 +29,12 @@ export function TrackingTray({ payload }: Props) {
         <span>NORAD {payload.noradId ?? "—"}</span>
         <span className="tracking-type">{payload.payloadType}</span>
       </div>
+
+      {mission ? (
+        <p className="tracking-mission">
+          {mission.name} · {mission.orbitType}
+        </p>
+      ) : null}
 
       <dl className="tracking-grid">
         <div>

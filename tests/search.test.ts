@@ -4,7 +4,7 @@ import { searchCatalog } from "@/lib/search";
 
 describe("searchCatalog", () => {
   it("finds payloads by operator", () => {
-    const results = searchCatalog(missions, payloads, "Varda");
+    const results = searchCatalog(missions, payloads, "W-Series");
     expect(results.some((result) => result.type === "payload" && result.label.includes("W-Series"))).toBe(true);
   });
 

@@ -100,11 +100,22 @@ const operators = [
 const payloadTypes = ["cubesat", "microsat", "hosted payload", "orbital transfer vehicle", "tech demo"];
 
 function manifestRowCount(mission: Mission) {
-  if (mission.id === "transporter-17") return 81;
-  if (mission.id === "transporter-15") return 140;
-  if (mission.id === "transporter-12") return 131;
-  if (mission.id === "transporter-1") return 143;
-  return Math.min(mission.manifestCount, 48);
+  return mission.manifestCount;
+}
+
+function payloadStatus(missionIndex: number, payloadIndex: number, isVarda: boolean): Payload["status"] {
+  if (isVarda) return "reentered";
+  if (missionIndex >= 15) {
+    return payloadIndex % 5 === 0 ? "catalog-pending" : "active";
+  }
+  if (missionIndex === 14) {
+    return payloadIndex % 14 === 0 ? "catalog-pending" : "active";
+  }
+  return payloadIndex % 17 === 0 ? "decayed" : "active";
+}
+
+function noradCatalogId(missionIndex: number, sequence: number) {
+  return String(51000 + missionIndex * 200 + sequence);
 }
 
 export const payloads: Payload[] = missions.flatMap((mission, missionIndex) => {
@@ -115,6 +126,10 @@ export const payloads: Payload[] = missions.flatMap((mission, missionIndex) => {
     const sequence = payloadIndex + 1;
     const deployTime = new Date(new Date(mission.launchDateUtc).getTime() + (55 + sequence * 3) * 60_000);
 
+    const status = payloadStatus(missionIndex, payloadIndex, isVarda);
+    const noradId = noradCatalogId(missionIndex, sequence);
+    const cataloged = status !== "catalog-pending";
+
     return {
       id: `${mission.id}-payload-${String(sequence).padStart(3, "0")}`,
       missionId: mission.id,
@@ -123,21 +138,19 @@ export const payloads: Payload[] = missions.flatMap((mission, missionIndex) => {
       payloadType: isVarda ? "reentry capsule" : payloadTypes[(payloadIndex + missionIndex) % payloadTypes.length],
       deployTimeUtc: deployTime.toISOString(),
       deployOrder: sequence,
-      noradId: missionIndex < 14 ? String(51000 + missionIndex * 160 + sequence) : undefined,
+      noradId: cataloged ? noradId : undefined,
       intlDesignator: `20${21 + Math.floor(missionIndex / 4)}-${String.fromCharCode(65 + (missionIndex % 26))}${sequence}`,
-      tleEpoch: missionIndex < 14 ? deployTime.toISOString() : undefined,
-      tle1:
-        missionIndex < 14
-          ? `1 ${51000 + missionIndex * 160 + sequence}U 26001A   26189.50000000  .00002182  00000+0  12000-3 0  999${sequence % 10}`
-          : undefined,
-      tle2:
-        missionIndex < 14
-          ? `2 ${51000 + missionIndex * 160 + sequence}  97.${(400 + sequence).toString().padStart(3, "0")} 143.1100 0012200 091.1200 269.1400 15.12000000${sequence.toString().padStart(5, "0")}`
-          : undefined,
+      tleEpoch: cataloged ? deployTime.toISOString() : undefined,
+      tle1: cataloged
+        ? `1 ${noradId}U 26001A   26189.50000000  .00002182  00000+0  12000-3 0  999${sequence % 10}`
+        : undefined,
+      tle2: cataloged
+        ? `2 ${noradId}  97.${(400 + sequence).toString().padStart(3, "0")} 143.1100 0012200 091.1200 269.1400 15.12000000${sequence.toString().padStart(5, "0")}`
+        : undefined,
       apogeeKm: 510 + ((payloadIndex * 13 + missionIndex * 7) % 90),
       perigeeKm: 485 + ((payloadIndex * 11 + missionIndex * 5) % 70),
       inclinationDeg: mission.orbitType.includes("Sun") ? 97.5 + ((payloadIndex % 8) * 0.04) : 45.1,
-      status: isVarda ? "reentered" : missionIndex > 14 ? "catalog-pending" : payloadIndex % 17 === 0 ? "decayed" : "active",
+      status,
       landingLat: isVarda ? 41.12 : undefined,
       landingLng: isVarda ? -113.52 : undefined,
       landingSiteName: isVarda ? "Utah Test and Training Range corridor" : undefined,

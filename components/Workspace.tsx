@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { Suspense, useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { missions, payloads } from "@/data/transporter";
+import type { Mission, MissionEvent, Payload } from "@/types";
 import { GlobeHeader } from "@/components/GlobeHeader";
 import { GlobeLegend } from "@/components/GlobeLegend";
 import { MobileDrawer } from "@/components/MobileDrawer";
@@ -12,24 +12,36 @@ import { Chip } from "@/components/ui/Chip";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { SwitchHud } from "@/components/ui/SwitchHud";
 import { useUrlState } from "@/lib/hooks/useUrlState";
+import { getTrackingStats, topOperators } from "@/lib/tracking-stats";
 
 const TransporterGlobe = dynamic(
   () => import("@/components/TransporterGlobe").then((mod) => mod.TransporterGlobe),
   { ssr: false, loading: () => <div className="globe-stage-loading">Loading orbital scene</div> }
 );
 
-const OPERATOR_CHIPS = ["Planet", "ICEYE", "Varda", "Exolaunch"];
+type Props = {
+  initialMissions: Mission[];
+  initialPayloads: Payload[];
+  initialEvents: MissionEvent[];
+  cacheExpiresAtUtc: string | null;
+};
 
-function WorkspaceInner() {
+function WorkspaceInner({ initialMissions, initialPayloads, cacheExpiresAtUtc }: Props) {
   const [urlState, setUrlState] = useUrlState();
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const [showOrbits, setShowOrbits] = useState(true);
   const [showGroundTracks, setShowGroundTracks] = useState(true);
   const [showVarda, setShowVarda] = useState(true);
-  const [playbackRate, setPlaybackRate] = useState("live");
+  const [playbackRate, setPlaybackRate] = useState<"live" | "60x" | "600x">("live");
   const [viewLens, setViewLens] = useState<"operator" | "status" | "orbit">("operator");
 
+  const missions = initialMissions;
+  const payloads = initialPayloads;
+  const globalStats = useMemo(() => getTrackingStats(payloads), [payloads]);
+
   const selectedMission = missions.find((mission) => mission.id === urlState.missionId) ?? missions[0];
+  const missionStats = useMemo(() => getTrackingStats(payloads, selectedMission.id), [payloads, selectedMission.id]);
+  const operatorChips = useMemo(() => topOperators(payloads, selectedMission.id, 6), [payloads, selectedMission.id]);
 
   const filteredPayloads = useMemo(() => {
     return payloads
@@ -40,7 +52,7 @@ function WorkspaceInner() {
         const haystack = `${payload.name} ${payload.operator} ${payload.noradId ?? ""} ${payload.landingSiteName ?? ""}`.toLowerCase();
         return haystack.includes(urlState.query.toLowerCase());
       });
-  }, [selectedMission.id, urlState.operator, urlState.query, urlState.status]);
+  }, [payloads, selectedMission.id, urlState.operator, urlState.query, urlState.status]);
 
   const statusCounts = useMemo(() => {
     const missionPayloads = payloads.filter((payload) => payload.missionId === selectedMission.id);
@@ -50,7 +62,7 @@ function WorkspaceInner() {
       reentered: missionPayloads.filter((payload) => payload.status === "reentered").length,
       pending: missionPayloads.filter((payload) => payload.status === "catalog-pending").length
     };
-  }, [selectedMission.id]);
+  }, [payloads, selectedMission.id]);
 
   const selectedPayload =
     payloads.find((payload) => payload.id === urlState.payloadId) ??
@@ -72,13 +84,17 @@ function WorkspaceInner() {
     setUrlState({ status: urlState.status === status ? "all" : status });
   };
 
+  const refreshLabel = cacheExpiresAtUtc
+    ? `SGP4 · next refresh ${new Date(cacheExpiresAtUtc).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC`
+    : "SGP4 · refreshed every ~30m";
+
   return (
     <div className="globe-app">
       <a className="skip-link" href={`/missions/${selectedMission.id}#manifest`}>
         Skip to manifest
       </a>
 
-      <GlobeHeader activeRoute="globe" />
+      <GlobeHeader activeRoute="globe" trackedCount={globalStats.onOrbit} manifestTotal={globalStats.total} />
 
       <section className="globe-stage" aria-label="3D orbital globe workspace">
         <div className="globe-canvas" aria-hidden="true">
@@ -89,15 +105,16 @@ function WorkspaceInner() {
             showGroundTracks={showGroundTracks}
             showOrbits={showOrbits}
             showVarda={showVarda}
+            playbackRate={playbackRate}
           />
         </div>
 
         <div className="hud-grid">
           <div className="hud-tl" aria-label="Mission summary">
-            <span className="section-label">Rideshare Mission</span>
+            <span className="section-label">On Orbit</span>
             <h1 className="hud-title">
-              {filteredPayloads.length.toLocaleString()}
-              <span className="hud-title-sub"> visible</span>
+              {missionStats.onOrbit.toLocaleString("en-US")}
+              <span className="hud-title-sub"> tracked</span>
             </h1>
             <label className="hud-mission-select">
               <span className="sr-only">Select mission</span>
@@ -107,12 +124,14 @@ function WorkspaceInner() {
               >
                 {missions.map((mission) => (
                   <option key={mission.id} value={mission.id}>
-                    {mission.name}
+                    {mission.name} · {mission.manifestCount}
                   </option>
                 ))}
               </select>
             </label>
-            <p className="hud-caption">SGP4 · refreshed every ~2h</p>
+            <p className="hud-caption">
+              {filteredPayloads.length.toLocaleString("en-US")} visible · {refreshLabel}
+            </p>
           </div>
 
           <div className="hud-tr tray search-tray" aria-label="Search">
@@ -141,18 +160,15 @@ function WorkspaceInner() {
 
             {viewLens === "operator" ? (
               <div className="chip-grid" aria-label="Operator filters">
-                {OPERATOR_CHIPS.map((operator) => {
-                  const fullName = operator === "Varda" ? "Varda Space Industries" : operator;
-                  return (
-                    <Chip
-                      key={operator}
-                      label={operator}
-                      count={payloads.filter((payload) => payload.missionId === selectedMission.id && payload.operator.includes(operator)).length}
-                      selected={urlState.operator.includes(operator)}
-                      onClick={() => setUrlState({ operator: urlState.operator.includes(operator) ? "all" : fullName })}
-                    />
-                  );
-                })}
+                {operatorChips.map(({ operator, count }) => (
+                  <Chip
+                    key={operator}
+                    label={operator.split(" ")[0]}
+                    count={count}
+                    selected={urlState.operator === operator}
+                    onClick={() => setUrlState({ operator: urlState.operator === operator ? "all" : operator })}
+                  />
+                ))}
               </div>
             ) : null}
 
@@ -165,7 +181,12 @@ function WorkspaceInner() {
               </div>
             ) : null}
 
-            {viewLens === "orbit" ? <p className="tray-note">{selectedMission.orbitType}</p> : null}
+            {viewLens === "orbit" ? (
+              <div className="orbit-readout">
+                <p className="tray-note">{selectedMission.orbitType}</p>
+                <p className="tray-note-sub">{selectedMission.launchSite}</p>
+              </div>
+            ) : null}
 
             <div className="tray-divider" />
 
@@ -188,7 +209,7 @@ function WorkspaceInner() {
                   { value: "600x", label: "600×" }
                 ]}
                 value={playbackRate}
-                onChange={setPlaybackRate}
+                onChange={(value) => setPlaybackRate(value as typeof playbackRate)}
               />
             </div>
 
@@ -196,22 +217,22 @@ function WorkspaceInner() {
           </div>
 
           <div className="hud-br tray hud-panel hud-br-desktop" aria-label="Object inspector">
-            <TrackingTray payload={selectedPayload} />
+            <TrackingTray payload={selectedPayload} mission={selectedMission} />
           </div>
         </div>
       </section>
 
       <MobileDrawer open={mobileInspectorOpen} title="Tracking" onClose={() => setMobileInspectorOpen(false)}>
-        <TrackingTray payload={selectedPayload} />
+        <TrackingTray payload={selectedPayload} mission={selectedMission} />
       </MobileDrawer>
     </div>
   );
 }
 
-export function Workspace() {
+export function Workspace(props: Props) {
   return (
     <Suspense fallback={<div className="globe-stage-loading">Loading workspace</div>}>
-      <WorkspaceInner />
+      <WorkspaceInner {...props} />
     </Suspense>
   );
 }

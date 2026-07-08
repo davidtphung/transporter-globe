@@ -3,9 +3,9 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import * as satellite from "satellite.js";
 import type { Payload } from "@/types";
 import { vardaTrajectory } from "@/data/transporter";
+import { propagateGroundTrack, propagatePayloadPosition } from "@/lib/orbital-propagate";
 import { payloadMarkerColor } from "@/lib/payload-status";
 
 type Props = {
@@ -15,6 +15,7 @@ type Props = {
   showGroundTracks?: boolean;
   showOrbits?: boolean;
   showVarda?: boolean;
+  playbackRate?: "live" | "60x" | "600x";
 };
 
 function latLngToVector3(lat: number, lng: number, radius: number) {
@@ -27,34 +28,10 @@ function latLngToVector3(lat: number, lng: number, radius: number) {
   );
 }
 
-function propagateGroundTrack(payload: Payload, samples = 120) {
-  if (!payload.tle1 || !payload.tle2) {
-    const offset = payload.deployOrder * 17;
-    return Array.from({ length: samples }, (_, index) => {
-      const lng = index * 3 - 180;
-      const lat = Math.sin((index / samples) * Math.PI * 2 + offset) * (payload.inclinationDeg / 3.8);
-      return latLngToVector3(lat, lng, 2.08);
-    });
-  }
-
-  const satrec = satellite.twoline2satrec(payload.tle1, payload.tle2);
-  const now = new Date();
-  const points: THREE.Vector3[] = [];
-
-  for (let index = 0; index < samples; index += 1) {
-    const time = new Date(now.getTime() + index * 60_000);
-    const positionAndVelocity = satellite.propagate(satrec, time);
-    if (!positionAndVelocity || typeof positionAndVelocity === "boolean") continue;
-    const positionEci = positionAndVelocity.position;
-    if (!positionEci || typeof positionEci === "boolean") continue;
-    const gmst = satellite.gstime(time);
-    const geodetic = satellite.eciToGeodetic(positionEci, gmst);
-    const lat = satellite.degreesLat(geodetic.latitude);
-    const lng = satellite.degreesLong(geodetic.longitude);
-    points.push(latLngToVector3(lat, lng, 2.08));
-  }
-
-  return points.length > 0 ? points : [latLngToVector3(0, 0, 2.08)];
+function playbackMultiplier(rate: Props["playbackRate"]) {
+  if (rate === "60x") return 60;
+  if (rate === "600x") return 600;
+  return 1;
 }
 
 function SatelliteMarker({
@@ -70,7 +47,7 @@ function SatelliteMarker({
 }) {
   const group = useRef<THREE.Group>(null);
   const colors = payloadMarkerColor(status, selected);
-  const coreRadius = selected ? 0.038 : 0.022;
+  const coreRadius = selected ? 0.04 : 0.022;
   const glowRadius = coreRadius * 2.4;
   const ringInner = coreRadius * 2.1;
   const ringOuter = coreRadius * 2.65;
@@ -86,7 +63,7 @@ function SatelliteMarker({
     <group ref={group} position={position} onClick={onSelect}>
       <mesh>
         <sphereGeometry args={[glowRadius, 14, 14]} />
-        <meshBasicMaterial color={colors.glow} transparent opacity={selected ? 0.28 : 0.14} depthWrite={false} />
+        <meshBasicMaterial color={colors.glow} transparent opacity={selected ? 0.32 : 0.14} depthWrite={false} />
       </mesh>
       {selected ? (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
@@ -108,40 +85,136 @@ function SatelliteMarker({
   );
 }
 
-function OrbitArc({
+function InstancedPayloadCloud({
+  payloads,
+  selectedPayloadId,
+  playbackRate,
+  onSelect
+}: {
+  payloads: Payload[];
+  selectedPayloadId: string;
+  playbackRate: Props["playbackRate"];
+  onSelect: (payloadId: string) => void;
+}) {
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const tempObject = useMemo(() => new THREE.Object3D(), []);
+  const tempColor = useMemo(() => new THREE.Color(), []);
+  const simStart = useRef(Date.now());
+  const simOffset = useRef(0);
+
+  useFrame((_, delta) => {
+    if (!meshRef.current) return;
+    const multiplier = playbackMultiplier(playbackRate);
+    simOffset.current += delta * multiplier * 1000;
+    const at = new Date(simStart.current + simOffset.current);
+
+    for (let index = 0; index < payloads.length; index += 1) {
+      const payload = payloads[index];
+      if (payload.id === selectedPayloadId) {
+        tempObject.position.set(0, 0, 0);
+        tempObject.scale.setScalar(0);
+        tempObject.updateMatrix();
+        meshRef.current.setMatrixAt(index, tempObject.matrix);
+        continue;
+      }
+      const position = propagatePayloadPosition(payload, at);
+      if (!position) continue;
+      const vector = latLngToVector3(position.lat, position.lng, 2.08);
+      tempObject.position.copy(vector);
+      tempObject.scale.setScalar(1);
+      tempObject.updateMatrix();
+      meshRef.current.setMatrixAt(index, tempObject.matrix);
+      const colors = payloadMarkerColor(payload.status, false);
+      tempColor.set(colors.core);
+      meshRef.current.setColorAt(index, tempColor);
+    }
+
+    meshRef.current.instanceMatrix.needsUpdate = true;
+    if (meshRef.current.instanceColor) {
+      meshRef.current.instanceColor.needsUpdate = true;
+    }
+  });
+
+  if (payloads.length === 0) return null;
+
+  return (
+    <instancedMesh
+      ref={meshRef}
+      args={[undefined, undefined, payloads.length]}
+      frustumCulled={false}
+      onClick={(event) => {
+        event.stopPropagation();
+        const instanceId = event.instanceId;
+        if (instanceId === undefined) return;
+        const payload = payloads[instanceId];
+        if (payload && payload.id !== selectedPayloadId) {
+          onSelect(payload.id);
+        }
+      }}
+    >
+      <sphereGeometry args={[0.018, 8, 8]} />
+      <meshStandardMaterial vertexColors roughness={0.4} metalness={0.05} emissiveIntensity={0.35} />
+    </instancedMesh>
+  );
+}
+
+function SelectedOrbitArc({
   payload,
-  selected,
-  onSelect,
+  playbackRate,
   showGroundTracks,
-  showOrbits
+  showOrbits,
+  onSelect
 }: {
   payload: Payload;
-  selected: boolean;
-  onSelect: () => void;
+  playbackRate: Props["playbackRate"];
   showGroundTracks: boolean;
   showOrbits: boolean;
+  onSelect: () => void;
 }) {
-  const points = useMemo(() => propagateGroundTrack(payload), [payload]);
+  const simStart = useRef(Date.now());
+  const simOffset = useRef(0);
+  const markerRef = useRef<THREE.Group>(null);
+  const glowRef = useRef<THREE.Mesh>(null);
+  const track = useMemo(() => propagateGroundTrack(payload, 120), [payload]);
+  const points = useMemo(() => track.map((point) => latLngToVector3(point.lat, point.lng, 2.08)), [track]);
   const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [points]);
-  const colors = payloadMarkerColor(payload.status, selected);
+  const colors = payloadMarkerColor(payload.status, true);
   const line = useMemo(
     () =>
       new THREE.Line(
         geometry,
         new THREE.LineBasicMaterial({
-          color: selected ? "#ffffff" : colors.glow,
+          color: "#ffffff",
           transparent: true,
-          opacity: selected ? 0.88 : showOrbits ? 0.26 : 0.08
+          opacity: showOrbits ? 0.9 : 0.12
         })
       ),
-    [geometry, selected, showOrbits, colors.glow]
+    [geometry, showOrbits]
   );
-  const marker = points[(payload.deployOrder * 7) % points.length];
+
+  useFrame((_, delta) => {
+    const multiplier = playbackMultiplier(playbackRate);
+    simOffset.current += delta * multiplier * 1000;
+    const at = new Date(simStart.current + simOffset.current);
+    const position = propagatePayloadPosition(payload, at);
+    if (!position) return;
+    const vector = latLngToVector3(position.lat, position.lng, 2.08);
+    markerRef.current?.position.copy(vector);
+    glowRef.current?.position.copy(vector);
+  });
+
+  const origin = useMemo(() => new THREE.Vector3(), []);
 
   return (
     <group>
       {showGroundTracks ? <primitive object={line} onClick={onSelect} /> : null}
-      <SatelliteMarker position={marker} selected={selected} status={payload.status} onSelect={onSelect} />
+      <group ref={markerRef} position={points[0]}>
+        <SatelliteMarker position={origin} selected status={payload.status} onSelect={onSelect} />
+      </group>
+      <mesh ref={glowRef} position={points[0]}>
+        <sphereGeometry args={[0.055, 12, 12]} />
+        <meshBasicMaterial color={colors.glow} transparent opacity={0.08} depthWrite={false} />
+      </mesh>
     </group>
   );
 }
@@ -218,9 +291,10 @@ function Earth() {
   );
 }
 
-function Scene({ payloads, selectedPayloadId, onSelect, showGroundTracks, showOrbits, showVarda }: Props) {
+function Scene({ payloads, selectedPayloadId, onSelect, showGroundTracks, showOrbits, showVarda, playbackRate }: Props) {
   const group = useRef<THREE.Group>(null);
   const reducedMotion = useRef(false);
+  const selectedPayload = payloads.find((payload) => payload.id === selectedPayloadId) ?? payloads[0];
 
   useEffect(() => {
     reducedMotion.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -232,25 +306,28 @@ function Scene({ payloads, selectedPayloadId, onSelect, showGroundTracks, showOr
     }
   });
 
-  const visiblePayloads = payloads.slice(0, 28);
-
   return (
     <group ref={group}>
       <Earth />
       <mesh>
         <sphereGeometry args={[2.012, 96, 96]} />
-        <meshBasicMaterial color="#005288" wireframe transparent opacity={0.05} />
+        <meshBasicMaterial color="#005288" wireframe transparent opacity={0.04} />
       </mesh>
-      {visiblePayloads.map((payload) => (
-        <OrbitArc
-          key={payload.id}
-          payload={payload}
-          selected={payload.id === selectedPayloadId}
-          onSelect={() => onSelect(payload.id)}
+      <InstancedPayloadCloud
+        payloads={payloads}
+        selectedPayloadId={selectedPayloadId}
+        playbackRate={playbackRate}
+        onSelect={onSelect}
+      />
+      {selectedPayload ? (
+        <SelectedOrbitArc
+          payload={selectedPayload}
+          playbackRate={playbackRate}
           showGroundTracks={showGroundTracks ?? true}
           showOrbits={showOrbits ?? true}
+          onSelect={() => onSelect(selectedPayload.id)}
         />
-      ))}
+      ) : null}
       {showVarda !== false ? <VardaTrack /> : null}
     </group>
   );
