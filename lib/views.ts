@@ -1,8 +1,8 @@
 import { kv } from "@vercel/kv";
 
 const VIEW_KEY = "transporter-globe:views";
-const COUNT_API_NAMESPACE = "davidtphung";
-const COUNT_API_KEY = "transporter-globe";
+const COUNT_API_KEY = "davidtphung_transporter-globe";
+const COUNT_API_BASE = "https://countapi.mileshilliard.com/api/v1";
 
 function hasKv() {
   return Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
@@ -10,16 +10,21 @@ function hasKv() {
 
 async function getCountApiValue(hit: boolean) {
   const endpoint = hit ? "hit" : "get";
-  const response = await fetch(`https://api.countapi.xyz/${endpoint}/${COUNT_API_NAMESPACE}/${COUNT_API_KEY}`, {
+  const response = await fetch(`${COUNT_API_BASE}/${endpoint}/${COUNT_API_KEY}`, {
     next: { revalidate: 0 }
   });
+
+  if (response.status === 404) {
+    return 0;
+  }
 
   if (!response.ok) {
     throw new Error(`CountAPI responded with ${response.status}`);
   }
 
-  const data = (await response.json()) as { value?: number };
-  return Math.max(0, data.value ?? 0);
+  const data = (await response.json()) as { value?: number | string };
+  const value = typeof data.value === "string" ? Number(data.value) : data.value;
+  return Math.max(0, value ?? 0);
 }
 
 export async function getViewCount() {
