@@ -16,7 +16,7 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { clsx } from "clsx";
-import { events, missions, operatorsList, payloads, vardaTrajectory } from "@/data/transporter";
+import { events, missions, operatorsList, payloads } from "@/data/transporter";
 import { InspectorPanel } from "@/components/InspectorPanel";
 import { MobileDrawer } from "@/components/MobileDrawer";
 import { PayloadTable } from "@/components/PayloadTable";
