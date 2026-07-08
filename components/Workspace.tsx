@@ -5,6 +5,7 @@ import { Suspense, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { events, missions, payloads } from "@/data/transporter";
 import { GlobeHeader } from "@/components/GlobeHeader";
+import { GlobeLegend } from "@/components/GlobeLegend";
 import { MobileDrawer } from "@/components/MobileDrawer";
 import { TrackingTray } from "@/components/TrackingTray";
 import { Chip } from "@/components/ui/Chip";
@@ -201,6 +202,8 @@ function WorkspaceInner() {
         <div className="tray hud-br hud-br-desktop" aria-label="Object inspector">
           <TrackingTray payload={selectedPayload} />
         </div>
+
+        <GlobeLegend />
       </section>
 
       <MobileDrawer open={mobileInspectorOpen} title="Tracking" onClose={() => setMobileInspectorOpen(false)}>

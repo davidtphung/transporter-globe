@@ -1,6 +1,8 @@
 "use client";
 
 import type { Payload } from "@/types";
+import { StatusDot } from "@/components/ui/StatusDot";
+import { payloadDotTone } from "@/lib/payload-status";
 
 type Props = {
   payload: Payload;
@@ -13,7 +15,10 @@ export function TrackingTray({ payload }: Props) {
     <div className="tracking-tray" aria-label="Selected object tracking">
       <div className="tracking-tray-head">
         <span className="section-label">Tracking</span>
-        <span className={`status-badge status-${payload.status}`}>{payload.status}</span>
+        <span className={`status-badge status-${payload.status}`}>
+          <StatusDot tone={payloadDotTone(payload.status)} size="sm" pulse={payload.status === "active"} />
+          {payload.status}
+        </span>
       </div>
 
       <div className="tracking-name font-mono">{payload.name}</div>

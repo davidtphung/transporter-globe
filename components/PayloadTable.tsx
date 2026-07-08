@@ -3,7 +3,9 @@
 import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Payload } from "@/types";
+import { StatusDot } from "@/components/ui/StatusDot";
 import { confidenceLabel } from "@/lib/format";
+import { payloadDotTone } from "@/lib/payload-status";
 
 type Props = {
   payloads: Payload[];
@@ -65,7 +67,10 @@ export function PayloadTable({ payloads, selectedPayloadId, missionName, onSelec
                     <td>{payload.operator}</td>
                     <td>{payload.payloadType}</td>
                     <td>
-                      <span className={`status-pill status-${payload.status}`}>{payload.status}</span>
+                      <span className={`status-pill status-${payload.status}`}>
+                        <StatusDot tone={payloadDotTone(payload.status)} size="sm" />
+                        {payload.status}
+                      </span>
                     </td>
                     <td>
                       {payload.perigeeKm} x {payload.apogeeKm} km

@@ -6,6 +6,7 @@ import * as THREE from "three";
 import * as satellite from "satellite.js";
 import type { Payload } from "@/types";
 import { vardaTrajectory } from "@/data/transporter";
+import { payloadMarkerColor } from "@/lib/payload-status";
 
 type Props = {
   payloads: Payload[];
@@ -56,6 +57,57 @@ function propagateGroundTrack(payload: Payload, samples = 120) {
   return points.length > 0 ? points : [latLngToVector3(0, 0, 2.08)];
 }
 
+function SatelliteMarker({
+  position,
+  selected,
+  status,
+  onSelect
+}: {
+  position: THREE.Vector3;
+  selected: boolean;
+  status: Payload["status"];
+  onSelect: () => void;
+}) {
+  const group = useRef<THREE.Group>(null);
+  const colors = payloadMarkerColor(status, selected);
+  const coreRadius = selected ? 0.038 : 0.022;
+  const glowRadius = coreRadius * 2.4;
+  const ringInner = coreRadius * 2.1;
+  const ringOuter = coreRadius * 2.65;
+
+  useFrame((state) => {
+    if (!group.current || !selected) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const pulse = 1 + Math.sin(state.clock.elapsedTime * 3.2) * 0.08;
+    group.current.scale.setScalar(pulse);
+  });
+
+  return (
+    <group ref={group} position={position} onClick={onSelect}>
+      <mesh>
+        <sphereGeometry args={[glowRadius, 14, 14]} />
+        <meshBasicMaterial color={colors.glow} transparent opacity={selected ? 0.28 : 0.14} depthWrite={false} />
+      </mesh>
+      {selected ? (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[ringInner, ringOuter, 40]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.42} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      ) : null}
+      <mesh>
+        <sphereGeometry args={[coreRadius, 18, 18]} />
+        <meshStandardMaterial
+          color={colors.core}
+          emissive={colors.emissive}
+          emissiveIntensity={selected ? 0.85 : 0.45}
+          roughness={0.35}
+          metalness={0.1}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 function OrbitArc({
   payload,
   selected,
@@ -71,26 +123,53 @@ function OrbitArc({
 }) {
   const points = useMemo(() => propagateGroundTrack(payload), [payload]);
   const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [points]);
+  const colors = payloadMarkerColor(payload.status, selected);
   const line = useMemo(
     () =>
       new THREE.Line(
         geometry,
         new THREE.LineBasicMaterial({
-          color: selected ? "#ffffff" : "#a7d1f0",
+          color: selected ? "#ffffff" : colors.glow,
           transparent: true,
-          opacity: selected ? 0.95 : showOrbits ? 0.32 : 0.1
+          opacity: selected ? 0.88 : showOrbits ? 0.26 : 0.08
         })
       ),
-    [geometry, selected, showOrbits]
+    [geometry, selected, showOrbits, colors.glow]
   );
   const marker = points[(payload.deployOrder * 7) % points.length];
 
   return (
     <group>
       {showGroundTracks ? <primitive object={line} onClick={onSelect} /> : null}
-      <mesh position={marker} onClick={onSelect}>
-        <sphereGeometry args={[selected ? 0.055 : 0.035, 18, 18]} />
-        <meshStandardMaterial color={selected ? "#ffffff" : "#a7d1f0"} emissive={selected ? "#005288" : "#003d66"} />
+      <SatelliteMarker position={marker} selected={selected} status={payload.status} onSelect={onSelect} />
+    </group>
+  );
+}
+
+function VardaMarker({ position, kind }: { position: THREE.Vector3; kind: "waypoint" | "landing" }) {
+  const isLanding = kind === "landing";
+  const coreRadius = isLanding ? 0.034 : 0.016;
+  const glowRadius = coreRadius * 2.6;
+
+  return (
+    <group position={position}>
+      <mesh>
+        <sphereGeometry args={[glowRadius, 12, 12]} />
+        <meshBasicMaterial color="#f44336" transparent opacity={isLanding ? 0.32 : 0.16} depthWrite={false} />
+      </mesh>
+      {isLanding ? (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[coreRadius * 2, coreRadius * 2.8, 36]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.5} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      ) : null}
+      <mesh>
+        <sphereGeometry args={[coreRadius, 16, 16]} />
+        <meshStandardMaterial
+          color={isLanding ? "#ffffff" : "#f44336"}
+          emissive={isLanding ? "#ffffff" : "#8b1a1a"}
+          emissiveIntensity={isLanding ? 0.7 : 0.4}
+        />
       </mesh>
     </group>
   );
@@ -106,7 +185,7 @@ function VardaTrack() {
         new THREE.LineBasicMaterial({
           color: "#f44336",
           transparent: true,
-          opacity: 0.9
+          opacity: 0.82
         })
       ),
     [geometry]
@@ -116,10 +195,7 @@ function VardaTrack() {
     <group>
       <primitive object={line} />
       {points.map((point, index) => (
-        <mesh key={vardaTrajectory[index].label} position={point}>
-          <sphereGeometry args={[index === points.length - 1 ? 0.06 : 0.04, 18, 18]} />
-          <meshStandardMaterial color={index === points.length - 1 ? "#ffffff" : "#f44336"} emissive="#8b1a1a" />
-        </mesh>
+        <VardaMarker key={vardaTrajectory[index].label} position={point} kind={index === points.length - 1 ? "landing" : "waypoint"} />
       ))}
     </group>
   );
@@ -163,7 +239,7 @@ function Scene({ payloads, selectedPayloadId, onSelect, showGroundTracks, showOr
       <Earth />
       <mesh>
         <sphereGeometry args={[2.012, 96, 96]} />
-        <meshBasicMaterial color="#005288" wireframe transparent opacity={0.06} />
+        <meshBasicMaterial color="#005288" wireframe transparent opacity={0.05} />
       </mesh>
       {visiblePayloads.map((payload) => (
         <OrbitArc
