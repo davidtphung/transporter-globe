@@ -21,7 +21,9 @@ export function TrackingTray({ payload }: Props) {
         </span>
       </div>
 
-      <div className="tracking-name font-mono">{payload.name}</div>
+      <div className="tracking-name font-mono" title={payload.name}>
+        {payload.name}
+      </div>
       <div className="tracking-meta">
         <span>NORAD {payload.noradId ?? "—"}</span>
         <span className="tracking-type">{payload.payloadType}</span>

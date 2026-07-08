@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { Suspense, useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { events, missions, payloads } from "@/data/transporter";
+import { missions, payloads } from "@/data/transporter";
 import { GlobeHeader } from "@/components/GlobeHeader";
 import { GlobeLegend } from "@/components/GlobeLegend";
 import { MobileDrawer } from "@/components/MobileDrawer";
@@ -27,7 +27,7 @@ function WorkspaceInner() {
   const [showGroundTracks, setShowGroundTracks] = useState(true);
   const [showVarda, setShowVarda] = useState(true);
   const [playbackRate, setPlaybackRate] = useState("live");
-  const [viewLens, setViewLens] = useState<"mission" | "operator" | "status">("operator");
+  const [viewLens, setViewLens] = useState<"operator" | "status" | "orbit">("operator");
 
   const selectedMission = missions.find((mission) => mission.id === urlState.missionId) ?? missions[0];
 
@@ -81,7 +81,7 @@ function WorkspaceInner() {
       <GlobeHeader activeRoute="globe" manifestCount={selectedMission.manifestCount} />
 
       <section className="globe-stage" aria-label="3D orbital globe workspace">
-        <div className="globe-canvas">
+        <div className="globe-canvas" aria-hidden="true">
           <TransporterGlobe
             payloads={visibleGlobePayloads}
             selectedPayloadId={selectedPayload.id}
@@ -92,118 +92,113 @@ function WorkspaceInner() {
           />
         </div>
 
-        <div className="hud hud-tl" aria-label="Mission summary">
-          <span className="section-label">Rideshare Mission</span>
-          <h1 className="hud-title">
-            {filteredPayloads.length.toLocaleString()}
-            <span className="hud-title-sub"> visible</span>
-          </h1>
-          <p className="hud-caption">
-            {selectedMission.name} · SGP4 · refreshed Jul 8, 2026
-          </p>
-        </div>
-
-        <div className="hud hud-tr tray search-tray" aria-label="Search">
-          <label className="search-pill">
-            <Search size={14} aria-hidden="true" />
-            <span className="sr-only">Search payload, operator, NORAD ID, or landing site</span>
-            <input
-              value={urlState.query}
-              onChange={(event) => setUrlState({ query: event.target.value })}
-              placeholder="Search or track a payload…"
-            />
-          </label>
-        </div>
-
-        <div className="tray hud-bl" aria-label="Filters and layers">
-          <label className="mission-select-compact">
-            <span className="section-label">Mission</span>
-            <select
-              value={selectedMission.id}
-              onChange={(event) => setUrlState({ missionId: event.target.value, payloadId: undefined })}
-              aria-label="Select Transporter mission"
-            >
-              {missions.map((mission) => (
-                <option key={mission.id} value={mission.id}>
-                  {mission.name} ({mission.manifestCount})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <SegmentedControl
-            ariaLabel="View lens"
-            options={[
-              { value: "operator", label: "Operator" },
-              { value: "status", label: "Status" },
-              { value: "mission", label: "Orbit" }
-            ]}
-            value={viewLens}
-            onChange={(value) => setViewLens(value as typeof viewLens)}
-          />
-
-          {viewLens === "operator" ? (
-            <div className="chip-grid" aria-label="Operator filters">
-              {OPERATOR_CHIPS.map((operator) => {
-                const fullName = operator === "Varda" ? "Varda Space Industries" : operator;
-                return (
-                  <Chip
-                    key={operator}
-                    label={operator}
-                    count={payloads.filter((payload) => payload.missionId === selectedMission.id && payload.operator.includes(operator)).length}
-                    selected={urlState.operator.includes(operator)}
-                    onClick={() => setUrlState({ operator: urlState.operator.includes(operator) ? "all" : fullName })}
-                  />
-                );
-              })}
-            </div>
-          ) : null}
-
-          {viewLens === "status" ? (
-            <div className="chip-grid" aria-label="Status filters">
-              <Chip label="Active" count={statusCounts.active} tone="nominal" selected={urlState.status === "active"} onClick={() => toggleStatus("active")} />
-              <Chip label="Decayed" count={statusCounts.decayed} tone="muted" selected={urlState.status === "decayed"} onClick={() => toggleStatus("decayed")} />
-              <Chip label="Reentry" count={statusCounts.reentered} tone="danger" selected={urlState.status === "reentered"} onClick={() => toggleStatus("reentered")} />
-              <Chip label="Pending" count={statusCounts.pending} tone="warning" selected={urlState.status === "catalog-pending"} onClick={() => toggleStatus("catalog-pending")} />
-            </div>
-          ) : null}
-
-          {viewLens === "mission" ? (
-            <p className="tray-note">{selectedMission.orbitType}</p>
-          ) : null}
-
-          <div className="tray-divider" />
-
-          <div className="switch-stack" aria-label="Globe layers">
-            <SwitchHud checked={showOrbits} onChange={setShowOrbits} label="Orbital paths" color="var(--accent)" />
-            <SwitchHud checked={showGroundTracks} onChange={setShowGroundTracks} label="Ground tracks" color="var(--mint)" />
-            <SwitchHud checked={showVarda} onChange={setShowVarda} label="Varda reentry arc" color="var(--rose)" />
+        <div className="hud-grid">
+          <div className="hud-tl" aria-label="Mission summary">
+            <span className="section-label">Rideshare Mission</span>
+            <h1 className="hud-title">
+              {filteredPayloads.length.toLocaleString()}
+              <span className="hud-title-sub"> visible</span>
+            </h1>
+            <label className="hud-mission-select">
+              <span className="sr-only">Select mission</span>
+              <select
+                value={selectedMission.id}
+                onChange={(event) => setUrlState({ missionId: event.target.value, payloadId: undefined })}
+              >
+                {missions.map((mission) => (
+                  <option key={mission.id} value={mission.id}>
+                    {mission.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="hud-caption">SGP4 · refreshed every ~2h</p>
           </div>
 
-          <div className="tray-divider" />
+          <div className="hud-tr tray search-tray" aria-label="Search">
+            <label className="search-pill">
+              <Search size={14} strokeWidth={2} aria-hidden="true" />
+              <span className="sr-only">Search payload, operator, NORAD ID, or landing site</span>
+              <input
+                value={urlState.query}
+                onChange={(event) => setUrlState({ query: event.target.value })}
+                placeholder="Search or track a payload…"
+              />
+            </label>
+          </div>
 
-          <div className="time-row">
-            <span className="section-label">Time</span>
+          <div className="hud-bl tray hud-panel" aria-label="Filters and layers">
             <SegmentedControl
-              size="sm"
-              ariaLabel="Playback rate"
+              ariaLabel="View lens"
               options={[
-                { value: "live", label: "Live" },
-                { value: "60x", label: "60×" },
-                { value: "600x", label: "600×" },
-                { value: "1h", label: "1h/s" }
+                { value: "operator", label: "Operator" },
+                { value: "status", label: "Status" },
+                { value: "orbit", label: "Orbit" }
               ]}
-              value={playbackRate}
-              onChange={setPlaybackRate}
+              value={viewLens}
+              onChange={(value) => setViewLens(value as typeof viewLens)}
             />
+
+            {viewLens === "operator" ? (
+              <div className="chip-grid" aria-label="Operator filters">
+                {OPERATOR_CHIPS.map((operator) => {
+                  const fullName = operator === "Varda" ? "Varda Space Industries" : operator;
+                  return (
+                    <Chip
+                      key={operator}
+                      label={operator}
+                      count={payloads.filter((payload) => payload.missionId === selectedMission.id && payload.operator.includes(operator)).length}
+                      selected={urlState.operator.includes(operator)}
+                      onClick={() => setUrlState({ operator: urlState.operator.includes(operator) ? "all" : fullName })}
+                    />
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {viewLens === "status" ? (
+              <div className="chip-grid" aria-label="Status filters">
+                <Chip label="Active" count={statusCounts.active} tone="nominal" selected={urlState.status === "active"} onClick={() => toggleStatus("active")} />
+                <Chip label="Decayed" count={statusCounts.decayed} tone="muted" selected={urlState.status === "decayed"} onClick={() => toggleStatus("decayed")} />
+                <Chip label="Reentry" count={statusCounts.reentered} tone="danger" selected={urlState.status === "reentered"} onClick={() => toggleStatus("reentered")} />
+                <Chip label="Pending" count={statusCounts.pending} tone="warning" selected={urlState.status === "catalog-pending"} onClick={() => toggleStatus("catalog-pending")} />
+              </div>
+            ) : null}
+
+            {viewLens === "orbit" ? <p className="tray-note">{selectedMission.orbitType}</p> : null}
+
+            <div className="tray-divider" />
+
+            <div className="switch-stack" aria-label="Globe layers">
+              <SwitchHud checked={showOrbits} onChange={setShowOrbits} label="Orbital paths" color="var(--accent)" />
+              <SwitchHud checked={showGroundTracks} onChange={setShowGroundTracks} label="Ground tracks" color="var(--mint)" />
+              <SwitchHud checked={showVarda} onChange={setShowVarda} label="Reentry arc" color="var(--rose)" />
+            </div>
+
+            <div className="tray-divider" />
+
+            <div className="time-row">
+              <span className="section-label">Time</span>
+              <SegmentedControl
+                size="sm"
+                ariaLabel="Playback rate"
+                options={[
+                  { value: "live", label: "Live" },
+                  { value: "60x", label: "60×" },
+                  { value: "600x", label: "600×" }
+                ]}
+                value={playbackRate}
+                onChange={setPlaybackRate}
+              />
+            </div>
+
+            <GlobeLegend compact />
+          </div>
+
+          <div className="hud-br tray hud-panel hud-br-desktop" aria-label="Object inspector">
+            <TrackingTray payload={selectedPayload} />
           </div>
         </div>
-
-        <div className="tray hud-br hud-br-desktop" aria-label="Object inspector">
-          <TrackingTray payload={selectedPayload} />
-        </div>
-
-        <GlobeLegend />
       </section>
 
       <MobileDrawer open={mobileInspectorOpen} title="Tracking" onClose={() => setMobileInspectorOpen(false)}>

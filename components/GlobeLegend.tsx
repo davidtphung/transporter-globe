@@ -7,9 +7,13 @@ const items = [
   { tone: "reentry" as const, label: "Reentry" }
 ];
 
-export function GlobeLegend() {
+type Props = {
+  compact?: boolean;
+};
+
+export function GlobeLegend({ compact = false }: Props) {
   return (
-    <div className="globe-legend" aria-label="Globe legend">
+    <div className={compact ? "tray-legend" : "globe-legend"} aria-label="Globe legend">
       {items.map((item) => (
         <span key={item.label} className="legend-item">
           <StatusDot tone={item.tone} size="sm" />
