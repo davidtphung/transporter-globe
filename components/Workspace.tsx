@@ -78,7 +78,7 @@ function WorkspaceInner() {
         Skip to manifest
       </a>
 
-      <GlobeHeader activeRoute="globe" manifestCount={selectedMission.manifestCount} />
+      <GlobeHeader activeRoute="globe" />
 
       <section className="globe-stage" aria-label="3D orbital globe workspace">
         <div className="globe-canvas" aria-hidden="true">
