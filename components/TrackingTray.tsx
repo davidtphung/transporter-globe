@@ -1,8 +1,6 @@
 "use client";
 
 import type { Payload } from "@/types";
-import { vardaTrajectory } from "@/data/transporter";
-import { confidenceLabel, formatDate } from "@/lib/format";
 
 type Props = {
   payload: Payload;
@@ -18,56 +16,45 @@ export function TrackingTray({ payload }: Props) {
         <span className={`status-badge status-${payload.status}`}>{payload.status}</span>
       </div>
 
-      <div className="tracking-name">{payload.name}</div>
+      <div className="tracking-name font-mono">{payload.name}</div>
       <div className="tracking-meta">
-        <span>{payload.operator}</span>
+        <span>NORAD {payload.noradId ?? "—"}</span>
         <span className="tracking-type">{payload.payloadType}</span>
       </div>
 
       <dl className="tracking-grid">
         <div>
-          <dt>Deploy</dt>
-          <dd>{formatDate(payload.deployTimeUtc)}</dd>
-        </div>
-        <div>
-          <dt>NORAD</dt>
-          <dd>{payload.noradId ?? "Pending"}</dd>
-        </div>
-        <div>
           <dt>Apogee</dt>
-          <dd>{payload.apogeeKm} km</dd>
+          <dd className="font-mono">{payload.apogeeKm} km</dd>
         </div>
         <div>
           <dt>Inclination</dt>
-          <dd>{payload.inclinationDeg.toFixed(1)}°</dd>
+          <dd className="font-mono">{payload.inclinationDeg.toFixed(1)}°</dd>
+        </div>
+        <div>
+          <dt>Perigee</dt>
+          <dd className="font-mono">{payload.perigeeKm} km</dd>
+        </div>
+        <div>
+          <dt>Operator</dt>
+          <dd>{payload.operator.split(" ")[0]}</dd>
         </div>
       </dl>
 
       <div className="confidence-bar">
         <div className="confidence-bar-head">
-          <span>Source confidence</span>
+          <span>CONFIDENCE</span>
           <span>{Math.round(confidence * 100)}%</span>
         </div>
         <div className="confidence-bar-track">
           <div className="confidence-bar-fill" style={{ width: `${confidence * 100}%` }} />
         </div>
-        <small>{confidenceLabel(confidence)}</small>
       </div>
 
       {payload.landingSiteName ? (
-        <div className="tracking-reentry">
-          <span className="section-label">Reentry corridor</span>
-          <ul>
-            {vardaTrajectory.map((point) => (
-              <li key={point.label}>
-                <span>{point.label}</span>
-                <strong>
-                  {point.lat.toFixed(1)}, {point.lng.toFixed(1)}
-                </strong>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <p className="tracking-landing font-mono">
+          Landing · {payload.landingLat?.toFixed(2)}, {payload.landingLng?.toFixed(2)}
+        </p>
       ) : null}
     </div>
   );

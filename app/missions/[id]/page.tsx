@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { GlobeHeader } from "@/components/GlobeHeader";
+import { MissionManifest } from "@/components/MissionManifest";
 import { events, missions, payloads, vardaTrajectory } from "@/data/transporter";
 import { buildMissionSummary } from "@/lib/adapters/normalize";
 import { formatDate } from "@/lib/format";
@@ -145,6 +146,8 @@ export default async function MissionPage({ params }: Props) {
           </ul>
         </section>
       </div>
+
+      <MissionManifest missionName={mission.name} missionId={mission.id} payloads={missionPayloads} />
     </main>
   );
 }

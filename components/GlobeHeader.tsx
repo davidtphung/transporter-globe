@@ -1,19 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { Globe2, ShieldCheck } from "lucide-react";
+import { Eye, Globe2 } from "lucide-react";
 import { clsx } from "clsx";
 
 type Props = {
   activeRoute?: "globe" | "missions";
+  manifestCount?: number;
 };
 
-export function GlobeHeader({ activeRoute = "globe" }: Props) {
+export function GlobeHeader({ activeRoute = "globe", manifestCount }: Props) {
   return (
     <header className="globe-header glass" aria-label="Site header">
       <div className="globe-header-inner">
         <Link href="/" className="globe-brand">
-          <Globe2 size={22} aria-hidden="true" />
+          <Globe2 size={18} aria-hidden="true" />
           <span>Transporter Globe</span>
         </Link>
 
@@ -26,10 +27,13 @@ export function GlobeHeader({ activeRoute = "globe" }: Props) {
           </Link>
         </nav>
 
-        <div className="globe-header-meta">
-          <ShieldCheck size={14} aria-hidden="true" />
-          <span>Sources refreshed Jul 8, 2026</span>
-        </div>
+        {manifestCount !== undefined ? (
+          <div className="globe-header-meta">
+            <Eye size={13} aria-hidden="true" />
+            <span className="font-mono">{manifestCount.toLocaleString()}</span>
+            <span className="meta-label">objects</span>
+          </div>
+        ) : null}
       </div>
     </header>
   );
