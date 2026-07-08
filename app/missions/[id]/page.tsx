@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { GlobeHeader } from "@/components/GlobeHeader";
 import { events, missions, payloads, vardaTrajectory } from "@/data/transporter";
 import { buildMissionSummary } from "@/lib/adapters/normalize";
 import { formatDate } from "@/lib/format";
@@ -32,18 +33,7 @@ export default async function MissionPage({ params }: Props) {
 
   return (
     <main className="shell mission-detail-page">
-      <header className="topbar mission-index-header">
-        <div className="brand">
-          <div>
-            <p>Transporter Globe</p>
-            <span>{mission.name}</span>
-          </div>
-        </div>
-        <nav className="primary-nav" aria-label="Primary">
-          <Link href="/">Globe</Link>
-          <Link href="/missions">Missions</Link>
-        </nav>
-      </header>
+      <GlobeHeader activeRoute="missions" />
 
       <section className="mission-detail-hero">
         <p className="eyebrow">Mission profile</p>

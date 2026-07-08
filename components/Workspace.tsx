@@ -3,38 +3,34 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Suspense, useMemo, useState } from "react";
-import {
-  Activity,
-  ArrowDownToLine,
-  Clock3,
-  Database,
-  Filter,
-  Globe2,
-  Layers,
-  Play,
-  Search,
-  ShieldCheck
-} from "lucide-react";
+import { ArrowDownToLine, Pause, Play, Search, SkipBack, SkipForward } from "lucide-react";
 import { clsx } from "clsx";
-import { events, missions, operatorsList, payloads } from "@/data/transporter";
-import { InspectorPanel } from "@/components/InspectorPanel";
+import { events, missions, payloads } from "@/data/transporter";
+import { GlobeHeader } from "@/components/GlobeHeader";
 import { MobileDrawer } from "@/components/MobileDrawer";
 import { PayloadTable } from "@/components/PayloadTable";
-import { formatDate } from "@/lib/format";
+import { TrackingTray } from "@/components/TrackingTray";
+import { Chip } from "@/components/ui/Chip";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { SwitchHud } from "@/components/ui/SwitchHud";
 import { useUrlState } from "@/lib/hooks/useUrlState";
 
 const TransporterGlobe = dynamic(
   () => import("@/components/TransporterGlobe").then((mod) => mod.TransporterGlobe),
-  { ssr: false, loading: () => <div className="globe-loading">Loading orbital scene</div> }
+  { ssr: false, loading: () => <div className="globe-stage-loading">Loading orbital scene</div> }
 );
 
-const domain = "transporterglobe.davidtphung.com";
+const OPERATOR_CHIPS = ["Planet", "ICEYE", "Varda Space Industries", "Exolaunch", "D-Orbit", "Capella Space"];
 
 function WorkspaceInner() {
   const [urlState, setUrlState] = useUrlState();
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const [showOrbits, setShowOrbits] = useState(true);
   const [showGroundTracks, setShowGroundTracks] = useState(true);
+  const [showVarda, setShowVarda] = useState(true);
+  const [playbackRate, setPlaybackRate] = useState("live");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [viewLens, setViewLens] = useState<"mission" | "operator" | "status">("mission");
 
   const selectedMission = missions.find((mission) => mission.id === urlState.missionId) ?? missions[0];
 
@@ -49,245 +45,249 @@ function WorkspaceInner() {
       });
   }, [selectedMission.id, urlState.operator, urlState.query, urlState.status]);
 
+  const statusCounts = useMemo(() => {
+    const missionPayloads = payloads.filter((payload) => payload.missionId === selectedMission.id);
+    return {
+      active: missionPayloads.filter((payload) => payload.status === "active").length,
+      decayed: missionPayloads.filter((payload) => payload.status === "decayed").length,
+      reentered: missionPayloads.filter((payload) => payload.status === "reentered").length,
+      pending: missionPayloads.filter((payload) => payload.status === "catalog-pending").length
+    };
+  }, [selectedMission.id]);
+
   const selectedPayload =
     payloads.find((payload) => payload.id === urlState.payloadId) ??
     filteredPayloads[0] ??
     payloads.find((payload) => payload.missionId === selectedMission.id) ??
     payloads[0];
 
-  const missionEvents = events.filter((event) => event.missionId === selectedMission.id).slice(0, 12);
   const visibleGlobePayloads =
     filteredPayloads.length > 0 ? filteredPayloads : payloads.filter((payload) => payload.missionId === selectedMission.id);
 
   const selectPayload = (payloadId: string) => {
     setUrlState({ payloadId });
-    setMobileInspectorOpen(true);
+    if (window.matchMedia("(max-width: 1180px)").matches) {
+      setMobileInspectorOpen(true);
+    }
+  };
+
+  const toggleStatus = (status: string) => {
+    setUrlState({ status: urlState.status === status ? "all" : status });
   };
 
   return (
-    <main className="shell">
+    <div className="globe-app">
       <a className="skip-link" href="#payload-table">
         Skip to manifest table
       </a>
 
-      <header className="topbar" aria-label="Global controls">
-        <div className="brand">
-          <div className="brand-mark" aria-hidden="true">
-            <Globe2 size={22} />
-          </div>
-          <div>
-            <p>Transporter Globe</p>
-            <span>{domain}</span>
-          </div>
-        </div>
+      <GlobeHeader activeRoute="globe" />
 
-        <label className="search">
-          <Search size={18} aria-hidden="true" />
-          <span className="sr-only">Search mission, payload, operator, NORAD ID, or landing site</span>
-          <input
-            value={urlState.query}
-            onChange={(event) => setUrlState({ query: event.target.value })}
-            placeholder="Search payload, operator, NORAD"
+      <section className="globe-stage" aria-label="3D orbital globe workspace">
+        <div className="globe-canvas">
+          <TransporterGlobe
+            payloads={visibleGlobePayloads}
+            selectedPayloadId={selectedPayload.id}
+            onSelect={selectPayload}
+            showGroundTracks={showGroundTracks}
+            showOrbits={showOrbits}
+            showVarda={showVarda}
           />
-        </label>
+        </div>
 
-        <div className="time-controls" aria-label="Playback controls">
-          <button type="button" aria-label="Play mission timeline">
-            <Play size={17} />
-          </button>
-          <a href="/api/export?format=csv" aria-label="Export payload table as CSV">
-            <ArrowDownToLine size={17} />
-          </a>
-          <div className="freshness">
-            <ShieldCheck size={16} aria-hidden="true" />
-            <span>Sources refreshed Jul 8, 2026</span>
+        <div className="hud hud-tl" aria-label="Mission summary">
+          <span className="section-label">Rideshare Mission</span>
+          <h1 className="hud-title">
+            {selectedMission.name}
+            <span className="hud-title-sub">{filteredPayloads.length.toLocaleString()} visible</span>
+          </h1>
+          <p className="hud-caption">
+            {selectedMission.orbitType} · SGP4 · {selectedMission.manifestCount} manifest objects
+          </p>
+          <Link className="hud-link" href={`/missions/${selectedMission.id}`}>
+            Open mission profile
+          </Link>
+        </div>
+
+        <div className="hud hud-tr tray search-tray" aria-label="Search">
+          <label className="search-pill">
+            <Search size={16} aria-hidden="true" />
+            <span className="sr-only">Search payload, operator, NORAD ID, or landing site</span>
+            <input
+              value={urlState.query}
+              onChange={(event) => setUrlState({ query: event.target.value })}
+              placeholder="Search or track a payload…"
+            />
+          </label>
+        </div>
+
+        <div className="tray hud-bl" aria-label="Filters and layers">
+          <SegmentedControl
+            ariaLabel="View lens"
+            options={[
+              { value: "mission", label: "Mission" },
+              { value: "operator", label: "Operator" },
+              { value: "status", label: "Status" }
+            ]}
+            value={viewLens}
+            onChange={(value) => setViewLens(value as typeof viewLens)}
+          />
+
+          {viewLens === "mission" ? (
+            <div className="mission-picker" role="listbox" aria-label="Transporter missions">
+              {missions.slice(-6).map((mission) => (
+                <button
+                  key={mission.id}
+                  type="button"
+                  className={clsx("mission-pill", mission.id === selectedMission.id && "active")}
+                  onClick={() => setUrlState({ missionId: mission.id, payloadId: undefined })}
+                  aria-selected={mission.id === selectedMission.id}
+                >
+                  {mission.name.replace("Transporter-", "T-")}
+                </button>
+              ))}
+              <label className="mission-select-wrap">
+                <span className="sr-only">All missions</span>
+                <select
+                  value={selectedMission.id}
+                  onChange={(event) => setUrlState({ missionId: event.target.value, payloadId: undefined })}
+                >
+                  {missions.map((mission) => (
+                    <option key={mission.id} value={mission.id}>
+                      {mission.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
+
+          {viewLens === "operator" ? (
+            <div className="chip-grid" aria-label="Operator filters">
+              <Chip
+                label="All"
+                selected={urlState.operator === "all"}
+                onClick={() => setUrlState({ operator: "all" })}
+              />
+              {OPERATOR_CHIPS.map((operator) => (
+                <Chip
+                  key={operator}
+                  label={operator.split(" ")[0]}
+                  count={payloads.filter((payload) => payload.missionId === selectedMission.id && payload.operator === operator).length}
+                  selected={urlState.operator === operator}
+                  onClick={() => setUrlState({ operator: urlState.operator === operator ? "all" : operator })}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {viewLens === "status" ? (
+            <div className="chip-grid" aria-label="Status filters">
+              <Chip label="Active" count={statusCounts.active} tone="nominal" selected={urlState.status === "active"} onClick={() => toggleStatus("active")} />
+              <Chip label="Decayed" count={statusCounts.decayed} tone="muted" selected={urlState.status === "decayed"} onClick={() => toggleStatus("decayed")} />
+              <Chip label="Reentered" count={statusCounts.reentered} tone="danger" selected={urlState.status === "reentered"} onClick={() => toggleStatus("reentered")} />
+              <Chip label="Pending" count={statusCounts.pending} tone="warning" selected={urlState.status === "catalog-pending"} onClick={() => toggleStatus("catalog-pending")} />
+            </div>
+          ) : null}
+
+          <div className="tray-divider" />
+
+          <div className="switch-stack" aria-label="Globe layers">
+            <SwitchHud checked={showOrbits} onChange={setShowOrbits} label="Orbital paths" color="var(--accent)" />
+            <SwitchHud checked={showGroundTracks} onChange={setShowGroundTracks} label="Ground tracks" color="var(--mint)" />
+            <SwitchHud checked={showVarda} onChange={setShowVarda} label="Varda reentry arc" color="var(--rose)" />
+          </div>
+
+          <div className="tray-divider" />
+
+          <div className="time-row">
+            <span className="section-label">Time</span>
+            <SegmentedControl
+              size="sm"
+              ariaLabel="Playback rate"
+              options={[
+                { value: "live", label: "Live" },
+                { value: "60x", label: "60×" },
+                { value: "600x", label: "600×" }
+              ]}
+              value={playbackRate}
+              onChange={setPlaybackRate}
+            />
           </div>
         </div>
-      </header>
 
-      <nav className="primary-nav" aria-label="Primary">
-        <Link href="/" aria-current="page">
-          Globe
-        </Link>
-        <Link href="/missions">Missions</Link>
-      </nav>
-
-      <section className="workspace" aria-label="Transporter mission intelligence workspace">
-        <aside className="sidebar" aria-label="Mission filters">
-          <div className="panel-heading">
-            <Filter size={17} aria-hidden="true" />
-            <h1>Mission Index</h1>
+        <div className="tray hud-bc playback-tray" aria-label="Playback controls">
+          <button type="button" aria-label="Step back" className="icon-btn">
+            <SkipBack size={16} />
+          </button>
+          <button type="button" aria-label={isPlaying ? "Pause timeline" : "Play timeline"} className="icon-btn play-btn" onClick={() => setIsPlaying((value) => !value)}>
+            {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+          </button>
+          <button type="button" aria-label="Step forward" className="icon-btn">
+            <SkipForward size={16} />
+          </button>
+          <div className="playback-scrub" aria-hidden="true">
+            <div className="playback-scrub-fill" style={{ width: "38%" }} />
           </div>
-          <div className="mission-list" role="listbox" aria-label="Transporter missions">
-            {missions.map((mission) => (
-              <button
-                key={mission.id}
-                type="button"
-                className={clsx("mission-row", mission.id === selectedMission.id && "active")}
-                onClick={() => setUrlState({ missionId: mission.id, payloadId: undefined })}
-                aria-selected={mission.id === selectedMission.id}
-              >
-                <span>{mission.name}</span>
-                <small>{mission.manifestCount} objects</small>
-              </button>
-            ))}
-          </div>
+          <span className="playback-label">{playbackRate === "live" ? "Live propagation" : `${playbackRate} playback`}</span>
+        </div>
 
-          <label className="field">
-            <span>Operator</span>
-            <select value={urlState.operator} onChange={(event) => setUrlState({ operator: event.target.value })}>
-              <option value="all">All operators</option>
-              {operatorsList.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Status</span>
-            <select value={urlState.status} onChange={(event) => setUrlState({ status: event.target.value })}>
-              <option value="all">All status values</option>
-              <option value="active">Active</option>
-              <option value="catalog-pending">Catalog pending</option>
-              <option value="decayed">Decayed</option>
-              <option value="reentered">Reentered</option>
-            </select>
-          </label>
-
-          <div className="chips" aria-label="Fast operator filters">
-            {["Planet", "ICEYE", "Varda Space Industries", "Exolaunch"].map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setUrlState({ operator: item })}
-                className={urlState.operator === item ? "selected" : ""}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-
-          <div className="layer-toggles" aria-label="Globe layer toggles">
-            <div className="panel-heading">
-              <Layers size={17} aria-hidden="true" />
-              <h2>Layers</h2>
-            </div>
-            <label className="toggle">
-              <input type="checkbox" checked={showOrbits} onChange={(event) => setShowOrbits(event.target.checked)} />
-              <span>Orbit trails</span>
-            </label>
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={showGroundTracks}
-                onChange={(event) => setShowGroundTracks(event.target.checked)}
-              />
-              <span>Ground tracks</span>
-            </label>
-          </div>
-        </aside>
-
-        <section className="globe-zone" aria-label="3D orbital globe and mission context">
-          <div className="mission-summary">
-            <div>
-              <p className="eyebrow">SpaceX rideshare intelligence</p>
-              <h2>{selectedMission.name}</h2>
-              <p>
-                {selectedMission.orbitType} from {selectedMission.launchSite}
-              </p>
-              <Link className="mission-link" href={`/missions/${selectedMission.id}`}>
-                Open mission profile
-              </Link>
-            </div>
-            <div className="stats" aria-label="Mission summary statistics">
-              <Stat icon={<Database size={17} />} label="Manifest" value={`${selectedMission.manifestCount}`} />
-              <Stat icon={<Activity size={17} />} label="Visible" value={`${filteredPayloads.length}`} />
-              <Stat icon={<Clock3 size={17} />} label="Launch" value={new Date(selectedMission.launchDateUtc).getUTCFullYear().toString()} />
-            </div>
-          </div>
-
-          <div className="globe-card">
-            <TransporterGlobe
-              payloads={visibleGlobePayloads}
-              selectedPayloadId={selectedPayload.id}
-              onSelect={selectPayload}
-              showGroundTracks={showGroundTracks}
-              showOrbits={showOrbits}
-            />
-            <div className="legend" aria-label="Globe legend">
-              <span>
-                <i className="cyan" /> Orbit trails
-              </span>
-              <span>
-                <i className="amber" /> Selected object
-              </span>
-              <span>
-                <i className="rose" /> Varda reentry
-              </span>
-            </div>
-          </div>
-
-          <section className="timeline" aria-label="Deployment timeline">
-            <div className="section-title">
-              <h3>Deploy Sequence</h3>
-              <span>{missionEvents.length} events</span>
-            </div>
-            <ol>
-              {missionEvents.map((event) => (
-                <li key={event.id}>
-                  <time dateTime={event.timestampUtc}>{formatDate(event.timestampUtc)}</time>
-                  <span>{event.description}</span>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </section>
-
-        <InspectorPanel payload={selectedPayload} className="inspector inspector-desktop" />
+        <div className="tray hud-br hud-br-desktop" aria-label="Object inspector">
+          <TrackingTray payload={selectedPayload} />
+        </div>
       </section>
 
-      <section className="manifest" id="payload-table" aria-label="Payload manifest">
-        <div className="section-title">
+      <section className="below-fold" id="payload-table" aria-label="Payload manifest and timeline">
+        <div className="below-fold-head tray">
           <div>
-            <p className="eyebrow">Accessible manifest</p>
-            <h2>Payload Table</h2>
+            <span className="section-label">Accessible manifest</span>
+            <h2>{selectedMission.name} payloads</h2>
           </div>
           <div className="export-links">
-            <a href={`/api/export?format=csv&mission=${selectedMission.id}`}>Export CSV</a>
-            <a href={`/api/export?format=json&mission=${selectedMission.id}`}>Export JSON</a>
+            <a href={`/api/export?format=csv&mission=${selectedMission.id}`}>
+              <ArrowDownToLine size={16} aria-hidden="true" /> CSV
+            </a>
+            <a href={`/api/export?format=json&mission=${selectedMission.id}`}>JSON</a>
           </div>
         </div>
+
         <PayloadTable
           payloads={filteredPayloads}
           selectedPayloadId={selectedPayload.id}
           missionName={selectedMission.name}
           onSelect={selectPayload}
         />
+
+        <section className="tray timeline-tray" aria-label="Deployment timeline">
+          <div className="section-title">
+            <h3>Deploy Sequence</h3>
+            <span>{events.filter((event) => event.missionId === selectedMission.id).length} events</span>
+          </div>
+          <ol className="timeline-compact">
+            {events
+              .filter((event) => event.missionId === selectedMission.id)
+              .slice(0, 10)
+              .map((event) => (
+                <li key={event.id}>
+                  <time dateTime={event.timestampUtc}>{new Date(event.timestampUtc).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" })}</time>
+                  <span>{event.description}</span>
+                </li>
+              ))}
+          </ol>
+        </section>
       </section>
 
-      <MobileDrawer open={mobileInspectorOpen} title="Object inspector" onClose={() => setMobileInspectorOpen(false)}>
-        <InspectorPanel payload={selectedPayload} className="inspector inspector-mobile" />
+      <MobileDrawer open={mobileInspectorOpen} title="Tracking" onClose={() => setMobileInspectorOpen(false)}>
+        <TrackingTray payload={selectedPayload} />
       </MobileDrawer>
-    </main>
+    </div>
   );
 }
 
 export function Workspace() {
   return (
-    <Suspense fallback={<div className="globe-loading">Loading workspace</div>}>
+    <Suspense fallback={<div className="globe-stage-loading">Loading workspace</div>}>
       <WorkspaceInner />
     </Suspense>
-  );
-}
-
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div>
-      {icon}
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }

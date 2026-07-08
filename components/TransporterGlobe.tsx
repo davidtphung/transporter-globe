@@ -13,6 +13,7 @@ type Props = {
   onSelect: (payloadId: string) => void;
   showGroundTracks?: boolean;
   showOrbits?: boolean;
+  showVarda?: boolean;
 };
 
 function latLngToVector3(lat: number, lng: number, radius: number) {
@@ -141,7 +142,7 @@ function Earth() {
   );
 }
 
-function Scene({ payloads, selectedPayloadId, onSelect, showGroundTracks, showOrbits }: Props) {
+function Scene({ payloads, selectedPayloadId, onSelect, showGroundTracks, showOrbits, showVarda }: Props) {
   const group = useRef<THREE.Group>(null);
   const reducedMotion = useRef(false);
 
@@ -174,14 +175,14 @@ function Scene({ payloads, selectedPayloadId, onSelect, showGroundTracks, showOr
           showOrbits={showOrbits ?? true}
         />
       ))}
-      <VardaTrack />
+      {showVarda !== false ? <VardaTrack /> : null}
     </group>
   );
 }
 
 export function TransporterGlobe(props: Props) {
   return (
-    <Canvas camera={{ position: [0, 0.8, 5.4], fov: 42 }} dpr={[1, 2]} aria-label="Interactive orbital globe">
+    <Canvas className="globe-canvas-inner" camera={{ position: [0, 0.8, 5.4], fov: 42 }} dpr={[1, 2]} aria-label="Interactive orbital globe">
       <ambientLight intensity={0.45} />
       <directionalLight position={[4, 3, 4]} intensity={1.1} />
       <pointLight position={[-3, -2, 5]} color="#a7d1f0" intensity={0.35} />

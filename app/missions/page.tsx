@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GlobeHeader } from "@/components/GlobeHeader";
 import { missions } from "@/data/transporter";
 import { formatDate } from "@/lib/format";
 
@@ -9,20 +10,7 @@ export const metadata = {
 export default function MissionsPage() {
   return (
     <main className="shell mission-index-page">
-      <header className="topbar mission-index-header">
-        <div className="brand">
-          <div>
-            <p>Transporter Globe</p>
-            <span>Global mission index</span>
-          </div>
-        </div>
-        <nav className="primary-nav" aria-label="Primary">
-          <Link href="/">Globe</Link>
-          <Link href="/missions" aria-current="page">
-            Missions
-          </Link>
-        </nav>
-      </header>
+      <GlobeHeader activeRoute="missions" />
 
       <section className="mission-index" aria-label="All Transporter missions">
         <div className="section-title">
