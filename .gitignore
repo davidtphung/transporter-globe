@@ -1,0 +1,17 @@
+.next
+node_modules
+out
+dist
+.vercel
+.env*
+!.env.example
+*.log
+.DS_Store
+*.tsbuildinfo
+
+# Personal dotfiles (worktree artifacts)
+.claude.json
+.gitconfig
+.profile
+.zshrc
+.zshrc.bak.*

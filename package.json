@@ -1,0 +1,39 @@
+{
+  "name": "transporter-globe",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "refresh:orbital": "node --import tsx scripts/refresh-orbital.ts"
+  },
+  "dependencies": {
+    "@react-three/fiber": "^9.1.2",
+    "@tanstack/react-virtual": "^3.13.8",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.511.0",
+    "next": "^15.3.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "satellite.js": "^5.0.0",
+    "three": "^0.176.0",
+    "three-globe": "^2.42.4"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
+    "@types/node": "^22.15.21",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "@types/three": "^0.176.0",
+    "eslint": "^9.27.0",
+    "eslint-config-next": "^15.3.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
+  }
+}
